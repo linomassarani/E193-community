@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:e193="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    tools:context=".MapsActivity">
+    <item
+        android:id="@+id/flip_list_map"
+        android:icon="@drawable/ic_list"
+        android:title="@string/action_list"
+        e193:showAsAction="ifRoom"></item>
+    <item
+        android:id="@+id/action_settings"
+        android:title="@string/action_settings"
+        e193:showAsAction="never"></item>
+
+
+</menu>

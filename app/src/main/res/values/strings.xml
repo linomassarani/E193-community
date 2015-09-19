@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <string name="app_name">E193 Mobile - Community</string>
+    <string name="title_activity_maps">PRAIA SEGURA</string>
+    <string name="action_settings">Configurações</string>
+    <string name="initial_lat">br.sc.gov.cbmsc.e193.community.initial_lat</string>
+    <string name="initial_lng">br.sc.gov.cbmsc.e193.community.initial_lng</string>
+    <string name="initial_zoom">br.sc.gov.cbmsc.e193.community.initial_zoom</string>
+    <string name="initial_tilt">br.sc.gov.cbmsc.e193.community.initial_tilt</string>
+    <string name="initial_bearing">br.sc.gov.cbmsc.e193.community.initial_bearing</string>
+    <string name="action_list">Lista</string>
+
+</resources>
