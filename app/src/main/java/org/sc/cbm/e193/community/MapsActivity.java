@@ -1,5 +1,8 @@
 package org.sc.cbm.e193.community;
 
+import android.animation.Animator;
+import android.animation.ObjectAnimator;
+import android.animation.PropertyValuesHolder;
 import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.support.v7.app.ActionBarActivity;
@@ -7,16 +10,17 @@ import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.View;
 import android.widget.ImageView;
-import android.widget.LinearLayout;
 
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.SupportMapFragment;
-import com.google.android.gms.maps.UiSettings;
 import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.CameraPosition;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.MarkerOptions;
+import com.oguzdev.circularfloatingactionmenu.library.FloatingActionButton;
+import com.oguzdev.circularfloatingactionmenu.library.FloatingActionMenu;
+import com.oguzdev.circularfloatingactionmenu.library.SubActionButton;
 
 import org.sc.cbm.e193.community.dao.HazardFlagDAO;
 import org.sc.cbm.e193.community.pojo.HazardFlag;
@@ -31,11 +35,12 @@ public class MapsActivity extends ActionBarActivity {
     private static final float INITIAL_BEARING = 0f;
 
     private GoogleMap mMap; // Might be null if Google Play services APK is not available.
-    private LinearLayout mMapView;
     private List<HazardFlag> mHazardFlags;
     private ImageView mImageViewGrayBG;
     private ImageView mImageViewSub;
     private ImageView mImageViewHelp;
+    private FloatingActionButton mFloatingActionButton;
+    private FloatingActionMenu mFloatingActionMenu;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -48,25 +53,139 @@ public class MapsActivity extends ActionBarActivity {
 
         mImageViewGrayBG.setVisibility(View.GONE);
         mImageViewSub.setVisibility(View.GONE);
+        mImageViewHelp.setVisibility(View.GONE);
 
+        createFloatingButton();
+        setHelpListener();
+        getSupportActionBar().setDisplayHomeAsUpEnabled(true);
+        setUpMapIfNeeded();
+    }
+
+    private void setHelpListener() {
         mImageViewHelp.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
+                mFloatingActionButton.setVisibility(View.INVISIBLE);
                 mImageViewGrayBG.setVisibility(View.VISIBLE);
+
+                mImageViewSub.setScaleX(0);
+                mImageViewSub.setScaleY(0);
                 mImageViewSub.setVisibility(View.VISIBLE);
+
+                PropertyValuesHolder pvhSX = PropertyValuesHolder.ofFloat(View.SCALE_X, 1);
+                PropertyValuesHolder pvhSY = PropertyValuesHolder.ofFloat(View.SCALE_Y, 1);
+                ObjectAnimator animation = ObjectAnimator.ofPropertyValuesHolder(mImageViewSub, pvhSX, pvhSY);
+                animation.start();
             }
         });
 
         mImageViewSub.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                mImageViewGrayBG.setVisibility(View.GONE);
-                mImageViewSub.setVisibility(View.GONE);
+                PropertyValuesHolder pvhSX = PropertyValuesHolder.ofFloat(View.SCALE_X, 0);
+                PropertyValuesHolder pvhSY = PropertyValuesHolder.ofFloat(View.SCALE_Y, 0);
+                ObjectAnimator animation = ObjectAnimator.ofPropertyValuesHolder(mImageViewSub, pvhSX, pvhSY);
+                animation.start();
+
+                animation.addListener(new Animator.AnimatorListener() {
+                    @Override
+                    public void onAnimationStart(Animator animator) {
+
+                    }
+
+                    @Override
+                    public void onAnimationEnd(Animator animator) {
+                        mImageViewGrayBG.setVisibility(View.GONE);
+                        mImageViewSub.setVisibility(View.GONE);
+                        mFloatingActionButton.setVisibility(View.VISIBLE);
+                    }
+
+                    @Override
+                    public void onAnimationCancel(Animator animator) {
+
+                    }
+
+                    @Override
+                    public void onAnimationRepeat(Animator animator) {
+
+                    }
+                });
+            }
+        });
+    }
+
+    private void createFloatingButton() {
+        // create a buttom to attach the menu
+        // in Activity Context
+        final ImageView fabIcon = new ImageView(this); // Create an icon
+        fabIcon.setImageDrawable(getResources().getDrawable(R.drawable.ic_action_new_light));
+
+        mFloatingActionButton = new FloatingActionButton.Builder(this)
+                .setContentView(fabIcon)
+                .build();
+
+        //create menu items
+        SubActionButton.Builder itemBuilder = new SubActionButton.Builder(this);
+        // repeat many times:
+        ImageView itemIcon0 = new ImageView(this);
+        ImageView itemIcon1 = new ImageView(this);
+        ImageView itemIcon2 = new ImageView(this);
+
+        itemIcon0.setImageDrawable(getResources().getDrawable(R.drawable.ic_help2));
+        itemIcon1.setImageDrawable(getResources().getDrawable(R.drawable.ic_jellyfish));
+        itemIcon2.setImageDrawable(getResources().getDrawable(R.drawable.ic_blackflag2));
+
+        SubActionButton sub0 = itemBuilder.setContentView(itemIcon0).build();
+        SubActionButton sub1 = itemBuilder.setContentView(itemIcon1).build();
+        SubActionButton sub2 = itemBuilder.setContentView(itemIcon2).build();
+
+        //create the menu with the items
+        mFloatingActionMenu = new FloatingActionMenu.Builder(this)
+                .addSubActionView(sub0, 110, 110)
+                .addSubActionView(sub1, 110, 110)
+                .addSubActionView(sub2, 110, 110)
+                .setRadius(150)
+                .attachTo(mFloatingActionButton)
+                .build();
+
+        //listeners
+        mFloatingActionMenu .setStateChangeListener(new FloatingActionMenu.MenuStateChangeListener() {
+            @Override
+            public void onMenuOpened(FloatingActionMenu floatingActionMenu) {
+                // Rotate the icon of rightLowerButton 45 degrees clockwise
+                fabIcon.setRotation(0);
+                PropertyValuesHolder pvhR = PropertyValuesHolder.ofFloat(View.ROTATION, 45);
+                ObjectAnimator animation = ObjectAnimator.ofPropertyValuesHolder(fabIcon, pvhR);
+                animation.start();
+            }
+
+            @Override
+            public void onMenuClosed(FloatingActionMenu floatingActionMenu) {
+                // Rotate the icon of rightLowerButton 45 degrees counter-clockwise
+                fabIcon.setRotation(45);
+                PropertyValuesHolder pvhR = PropertyValuesHolder.ofFloat(View.ROTATION, 0);
+                ObjectAnimator animation = ObjectAnimator.ofPropertyValuesHolder(fabIcon, pvhR);
+                animation.start();
             }
         });
 
-        getSupportActionBar().setDisplayHomeAsUpEnabled(true);
-        setUpMapIfNeeded();
+        sub0.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                mFloatingActionMenu.close(true);
+                mFloatingActionButton.setVisibility(View.INVISIBLE);
+                mImageViewGrayBG.setVisibility(View.VISIBLE);
+
+                mImageViewSub.setScaleX(0);
+                mImageViewSub.setScaleY(0);
+                mImageViewSub.setVisibility(View.VISIBLE);
+
+                PropertyValuesHolder pvhSX = PropertyValuesHolder.ofFloat(View.SCALE_X, 1);
+                PropertyValuesHolder pvhSY = PropertyValuesHolder.ofFloat(View.SCALE_Y, 1);
+                ObjectAnimator animation = ObjectAnimator.ofPropertyValuesHolder(mImageViewSub, pvhSX, pvhSY);
+                animation.start();
+            }
+        });
     }
 
     @Override
@@ -103,8 +222,11 @@ public class MapsActivity extends ActionBarActivity {
         // Do a null check to confirm that we have not already instantiated the map.
         if (mMap == null) {
             // Try to obtain the map from the SupportMapFragment.
-            mMap = ((SupportMapFragment) getSupportFragmentManager().findFragmentById(R.id.map))
-                    .getMap();
+            SupportMapFragment mapView = ((SupportMapFragment) getSupportFragmentManager().findFragmentById(R.id.map));
+            mMap = (mapView).getMap();
+            mMap.setPadding(0, 0,
+                    getResources().getDimensionPixelSize(R.dimen.action_button_size)
+                            + getResources().getDimensionPixelSize(R.dimen.action_button_margin), 0);
             // Check if we were successful in obtaining the map.
             if (mMap != null) {
                 setUpMap();

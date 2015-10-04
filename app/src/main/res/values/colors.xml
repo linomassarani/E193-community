@@ -2,4 +2,5 @@
 <resources>
     <color name="firefighter_red">#e03a3e</color>
     <color name="gray_background">#d4eeeeee</color>
+    <color name="black">#ff000000</color>
 </resources>
