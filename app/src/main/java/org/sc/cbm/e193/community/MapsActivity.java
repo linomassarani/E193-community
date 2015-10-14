@@ -17,14 +17,16 @@ import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.CameraPosition;
 import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.oguzdev.circularfloatingactionmenu.library.FloatingActionButton;
 import com.oguzdev.circularfloatingactionmenu.library.FloatingActionMenu;
 import com.oguzdev.circularfloatingactionmenu.library.SubActionButton;
 
-import org.sc.cbm.e193.community.dao.HazardFlagDAO;
-import org.sc.cbm.e193.community.pojo.HazardFlag;
+import org.sc.cbm.e193.community.dao.LifeguardPostDAO;
+import org.sc.cbm.e193.community.pojo.LifeguardTower;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class MapsActivity extends ActionBarActivity {
@@ -35,12 +37,17 @@ public class MapsActivity extends ActionBarActivity {
     private static final float INITIAL_BEARING = 0f;
 
     private GoogleMap mMap; // Might be null if Google Play services APK is not available.
-    private List<HazardFlag> mHazardFlags;
+    private List<LifeguardTower> mLifeguardTowers;
     private ImageView mImageViewGrayBG;
     private ImageView mImageViewSub;
     private ImageView mImageViewHelp;
     private FloatingActionButton mFloatingActionButton;
     private FloatingActionMenu mFloatingActionMenu;
+    private List<Marker> mFlagsMarkers;
+    private List<Marker> mJelliesMarkers;
+    private List<Marker> mWeatherMarkers;
+    private List<Marker> mLifeguardsNumMarkers;
+    private List<Marker> mCurrentMarker;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -54,6 +61,11 @@ public class MapsActivity extends ActionBarActivity {
         mImageViewGrayBG.setVisibility(View.GONE);
         mImageViewSub.setVisibility(View.GONE);
         mImageViewHelp.setVisibility(View.GONE);
+
+        mFlagsMarkers = new ArrayList<>();
+        mJelliesMarkers = new ArrayList<>();
+        mWeatherMarkers = new ArrayList<>();
+        mLifeguardsNumMarkers = new ArrayList<>();
 
         createFloatingButton();
         setHelpListener();
@@ -130,24 +142,28 @@ public class MapsActivity extends ActionBarActivity {
         ImageView itemIcon0 = new ImageView(this);
         ImageView itemIcon1 = new ImageView(this);
         ImageView itemIcon2 = new ImageView(this);
+        ImageView itemIcon3 = new ImageView(this);
 
-        itemIcon0.setImageDrawable(getResources().getDrawable(R.drawable.ic_help2));
+        itemIcon0.setImageDrawable(getResources().getDrawable(R.drawable.ic_help_menu));
         itemIcon1.setImageDrawable(getResources().getDrawable(R.drawable.ic_jellyfish));
-        itemIcon2.setImageDrawable(getResources().getDrawable(R.drawable.ic_blackflag2));
+        itemIcon2.setImageDrawable(getResources().getDrawable(R.drawable.ic_weather_cloudy_menu));
+        itemIcon3.setImageDrawable(getResources().getDrawable(R.drawable.ic_blackflag_menu));
+
 
         SubActionButton sub0 = itemBuilder.setContentView(itemIcon0).build();
         SubActionButton sub1 = itemBuilder.setContentView(itemIcon1).build();
         SubActionButton sub2 = itemBuilder.setContentView(itemIcon2).build();
+        SubActionButton sub3 = itemBuilder.setContentView(itemIcon3).build();
 
         //create the menu with the items
         mFloatingActionMenu = new FloatingActionMenu.Builder(this)
                 .addSubActionView(sub0, 110, 110)
                 .addSubActionView(sub1, 110, 110)
                 .addSubActionView(sub2, 110, 110)
-                .setRadius(150)
+                .addSubActionView(sub3, 110, 110)
+                .setRadius(200)
                 .attachTo(mFloatingActionButton)
                 .build();
-
         //listeners
         mFloatingActionMenu .setStateChangeListener(new FloatingActionMenu.MenuStateChangeListener() {
             @Override
@@ -178,12 +194,44 @@ public class MapsActivity extends ActionBarActivity {
 
                 mImageViewSub.setScaleX(0);
                 mImageViewSub.setScaleY(0);
+
+//                float bkpX = mImageViewSub.getX();
+//                float bkpY = mImageViewSub.getY();
+//                mImageViewSub.setX(mFloatingActionButton.getX());
+//                mImageViewSub.setY(mFloatingActionButton.getY());
+
                 mImageViewSub.setVisibility(View.VISIBLE);
 
                 PropertyValuesHolder pvhSX = PropertyValuesHolder.ofFloat(View.SCALE_X, 1);
                 PropertyValuesHolder pvhSY = PropertyValuesHolder.ofFloat(View.SCALE_Y, 1);
-                ObjectAnimator animation = ObjectAnimator.ofPropertyValuesHolder(mImageViewSub, pvhSX, pvhSY);
+//                PropertyValuesHolder pvTX = PropertyValuesHolder.ofFloat(View.TRANSLATION_X, bkpX);
+//                PropertyValuesHolder pvTY = PropertyValuesHolder.ofFloat(View.TRANSLATION_Y, bkpY);
+                ObjectAnimator animation = ObjectAnimator.ofPropertyValuesHolder(mImageViewSub, pvhSX, pvhSY/**, pvTX, pvTY**/);
                 animation.start();
+            }
+        });
+
+        sub1.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                setMarkersVisible(mJelliesMarkers);
+                mFloatingActionMenu.close(true);
+            }
+        });
+
+        sub2.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                setMarkersVisible(mWeatherMarkers);
+                mFloatingActionMenu.close(true);
+            }
+        });
+
+        sub3.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                setMarkersVisible(mFlagsMarkers);
+                mFloatingActionMenu.close(true);
             }
         });
     }
@@ -241,18 +289,56 @@ public class MapsActivity extends ActionBarActivity {
      * This should only be called once and when we are sure that {@link #mMap} is not null.
      */
     private void setUpMap() {
-        mHazardFlags = HazardFlagDAO.getAllFlags();
-        for(HazardFlag hf : mHazardFlags) {
-            mMap.addMarker(new MarkerOptions()
-                    .position(hf.getLatLng())
-                    .title("")
-                    .icon(BitmapDescriptorFactory.fromResource(getFlag(hf.getColor())))
-            );
-        }
+        mLifeguardTowers = LifeguardPostDAO.getAll();
+        loadMarkers();
 
         setInitialCameraPosition();
-//        mMap.getUiSettings().setZoomControlsEnabled(true);
+    }
 
+    private void loadMarkers() {
+        for(LifeguardTower lt : mLifeguardTowers) {
+            Marker newFlagMarker = mMap.addMarker(new MarkerOptions()
+                    .position(lt.getLatLng())
+                    .title("")
+                    .icon(BitmapDescriptorFactory.fromResource(getFlagDrawable(lt.getHazardFlag()))));
+            mFlagsMarkers.add(newFlagMarker);
+
+            Marker newWeatherMarker = mMap.addMarker(new MarkerOptions()
+                    .position(lt.getLatLng())
+                    .title("")
+                    .icon(BitmapDescriptorFactory.fromResource(getWeatherDrawable(lt.getWeather()))));
+            mWeatherMarkers.add(newWeatherMarker);
+            newWeatherMarker.setVisible(false);
+
+            Marker newJellyMarker = mMap.addMarker(new MarkerOptions()
+                    .position(lt.getLatLng())
+                    .title("")
+                    .icon(BitmapDescriptorFactory.fromResource(getJellyDrawable(lt.getJellyFish()))));
+            mJelliesMarkers.add(newJellyMarker);
+            newJellyMarker.setVisible(false);
+
+//            Marker newLifeguardNumMarker = mMap.addMarker(new MarkerOptions()
+//                    .position(lt.getLatLng())
+//                    .title(String.valueOf(lt.getLifeguardsNum())));
+//            mWeatherMarkers.add(newLifeguardNumMarker);
+//            newLifeguardNumMarker.setVisible(false);
+        }
+        mCurrentMarker = mFlagsMarkers;
+    }
+
+    private void setMarkersVisible(List<Marker> list) {
+        if (list.hashCode() == mCurrentMarker.hashCode())
+            return;
+
+        for(Marker m : mCurrentMarker) {
+            m.setVisible(false);
+        }
+
+        for(Marker m : list) {
+            m.setVisible(true);
+        }
+
+        mCurrentMarker = list;
     }
 
     private void setInitialCameraPosition() {
@@ -309,7 +395,7 @@ public class MapsActivity extends ActionBarActivity {
         ed.commit();
     }
 
-    private int getFlag(HazardFlag.Color color) {
+    private int getFlagDrawable(LifeguardTower.HazardFlag color) {
         switch(color) {
             case GREEN:
                 return R.drawable.ic_greenflag;
@@ -317,8 +403,36 @@ public class MapsActivity extends ActionBarActivity {
                 return R.drawable.ic_yellowflag;
             case RED:
                 return R.drawable.ic_redflag;
-            default:
+            case BLACK:
                 return R.drawable.ic_blackflag;
+            default:
+                return R.drawable.ic_help_menu;
+        }
+    }
+
+    private int getJellyDrawable(LifeguardTower.JellyFish jellyFish) {
+        switch(jellyFish) {
+            case LITTLE:
+                return R.drawable.ic_jelly_little;
+            case NONE:
+                return R.drawable.ic_jelly_none;
+            case MUCH:
+                return R.drawable.ic_jelly_much;
+            default:
+                return R.drawable.ic_help_menu;
+        }
+    }
+
+    private int getWeatherDrawable(LifeguardTower.Weather weather) {
+        switch(weather) {
+            case CLEAN:
+                return R.drawable.ic_weather_sunny_color;
+            case CLOUDY:
+                return R.drawable.ic_weather_cloudy_color;
+            case RAINY:
+                return R.drawable.ic_weather_rain;
+            default:
+                return R.drawable.ic_help_menu;
         }
     }
 }
